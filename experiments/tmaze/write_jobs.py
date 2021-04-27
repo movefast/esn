@@ -16,7 +16,7 @@ cur_dir = ROOT_DIR/"experiments/tmaze"
 
 def create_job(agent_type, hyper_params):
     global count
-    cmd = f"python -m maze.run_single_job --agent_type=\"{agent_type}\" --hyper_params=\"{hyper_params}\""
+    cmd = f"python -m experiments.tmaze.run_single_job --agent_type=\"{agent_type}\" --hyper_params=\"{hyper_params}\""
     with open(cur_dir/f"jobs/tasks_{count}.sh", 'w') as f:
         f.write(cmd)
     print(count, cmd)
