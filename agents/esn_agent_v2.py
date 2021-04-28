@@ -10,48 +10,113 @@ from agents.replay.replay_buffer import ReplayMemory, Transition
 criterion = torch.nn.SmoothL1Loss()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+# class SimpleRNN(nn.Module):
+#     def __init__(self, input_size, hidden_size, output_size):
+#         super(SimpleRNN, self).__init__()
+#         self.hidden_size = hidden_size
+#         self.tanh = nn.ReLU()
+#         self.i2h = nn.Linear(input_size+hidden_size, hidden_size)
+#         for param in self.i2h.parameters():
+#             param.requires_grad = False
+#         u,s,v = torch.svd(self.i2h.weight)
+#         with torch.no_grad():
+#             self.i2h.weight /= s[0].item()
+#         self.i2o = nn.Linear(input_size+hidden_size, output_size)
+
+#     def forward(self, x, hidden):
+#         x = torch.cat([x,hidden],dim=1)
+#         x = self.tanh(x)
+#         # get new hidden
+#         h = self.i2h(x)
+#         h = self.tanh(h)
+
+#         x = self.i2o(x)
+#         return x
+
+#     def initHidden(self):
+#         return torch.zeros(1, self.hidden_size).to(device)
 
 class SimpleRNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(SimpleRNN, self).__init__()
         self.hidden_size = hidden_size
-        self.rnn = nn.GRU(input_size, hidden_size, 1)
-        self.decoder = nn.Linear(input_size, output_size)
         self.tanh = nn.Tanh()
-        self.actions = nn.Parameter(torch.normal(0, .01, (4, hidden_size)))
+        self.i2h = nn.Linear(input_size, hidden_size)
+        torch.nn.init.xavier_uniform_(self.i2h.weight)
+        # torch.nn.init.uniform_(self.i2h.weight, -1, 1)
+        # self.i2h.weight.requires_grad_(False)
+
+        self.w = nn.Linear(hidden_size, hidden_size)
+        # self.w = nn.Conv1d(1, 1, kernel_size=5, stride=2, dilation=2, padding=1)
+        # for param in self.i2h.parameters():
+        #     param.requires_grad = False
+        torch.nn.init.uniform_(self.w.weight, -0.5, 0.5)
+        with torch.no_grad():
+            self.w.weight[torch.rand_like(self.w.weight) < 0.5] = 0
+            u,s,v = torch.svd(self.w.weight)
+            self.w.weight /= s[0].item()
+        self.w.weight.requires_grad_(False)
+        # self.i2o = nn.Linear(input_size+hidden_size, output_size)
+        self.i2o = nn.Linear(input_size+hidden_size, (input_size+hidden_size)//2)
+        self.o = nn.Linear((input_size+hidden_size)//2, output_size)
+        torch.nn.init.xavier_uniform_(self.i2o.weight)
+        # self.actions = nn.Parameter(torch.normal(0, .01, (output_size, hidden_size)))
 
     def forward(self, inp, hidden):
         output = []
         hiddens = []
         if len(inp.size()) == 2:
             inp = inp.unsqueeze(1)
-        output, hidden = self.rnn(inp, hidden)
-        decoded = self.decoder(output)
-        return decoded, hidden
+        for i in range(inp.size(0)):
+            x = inp[i]
+
+            with torch.no_grad():
+                hidden_w = self.w(hidden)
+
+                # hidden_w = self.w(hidden.unsqueeze(0))
+                # hidden_w.squeeze_(0)
+            hidden_in = self.i2h(x)
+
+            hidden = self.tanh(hidden_in+hidden_w)
+
+            combined = torch.cat((x, hidden), 1)
+
+            # output.append(self.i2o(combined))
+            output.append(self.o(self.tanh(self.i2o(combined))))
+            hiddens.append(hidden)
+
+        return output[-1], hiddens[-1]
 
     def batch(self, inp, hidden, discount_batch, action_batch):
-        outputs = []
+        output = []
         hiddens = []
         if len(inp.size()) == 2:
             inp = inp.unsqueeze(1)
-
-        self.rnn(inp, hidden)
         for i in range(inp.size(0)):
-            x = inp[i:i+1]
-            output, hidden = self.rnn(x, hidden)
-            outputs.append(self.decoder(output))
-            # q_vals = F.softmax(output[-1], -1)
-            # q_idx = q_vals.max(1)[1]
-            # hidden *= 1 + self.actions[q_idx]
-            # hidden = hidden * (1 + F.tanh(self.actions[action_batch[i]]))
+            x = inp[i]
+
+            with torch.no_grad():
+                hidden_w = self.w(hidden)
+
+                # hidden_w = self.w(hidden.unsqueeze(0))
+                # hidden_w.squeeze_(0)
+            hidden_in = self.i2h(x)
+            hidden = self.tanh(hidden_in+hidden_w)
+
+            combined = torch.cat((x, hidden), 1)
+
+            # output.append(self.i2o(combined))
+            output.append(self.o(self.tanh(self.i2o(combined))))
+            # hidden = hidden * (1 + self.actions[action_batch[i]])
+
             hiddens.append(hidden.detach())
 
             if discount_batch[i].item() == 0:
                 hidden = self.initHidden()
-        return torch.cat(outputs), hiddens
+        return torch.cat(output), hiddens
 
     def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size).to(device)
+        return torch.zeros(1, self.hidden_size).to(device)
 
 
 class RNNAgent(agent.BaseAgent):
@@ -78,9 +143,10 @@ class RNNAgent(agent.BaseAgent):
         self.discount = agent_init_info["discount"]
         self.rand_generator = np.random.RandomState(agent_init_info["seed"])
         self.T = agent_init_info.get("T",10)
+        self.hidden_size = agent_init_info.get("hidden_size", self.num_states+1)
 
-        self.rnn = SimpleRNN(self.num_states+1, self.num_states+1,self.num_actions).to(device)
-        self.target_rnn = SimpleRNN(self.num_states+1, self.num_states+1,self.num_actions).to(device)
+        self.rnn = SimpleRNN(self.num_states+1, self.hidden_size, self.num_actions).to(device)
+        self.target_rnn = SimpleRNN(self.num_states+1, self.hidden_size, self.num_actions).to(device)
         self.update_target()
         self.optimizer = torch.optim.Adam(self.rnn.parameters(), lr=self.step_size)
         self.buffer = ReplayMemory(1000)
@@ -93,13 +159,14 @@ class RNNAgent(agent.BaseAgent):
         state, is_door = state
         state = np.eye(self.num_states)[state]
         state = torch.Tensor(state).to(device)
+
         # if self.is_door is None or is_door is True:
         #     self.is_door = int(is_door)
         # else:
         #     self.is_door = self.is_door * .9 + is_door * .1
+
         self.is_door = int(is_door)
         is_door = torch.Tensor([float(self.is_door)]).to(device)
-
         return torch.cat([state, is_door])[None, ...]
 
     def agent_start(self, state):
@@ -117,9 +184,6 @@ class RNNAgent(agent.BaseAgent):
         self.feature = None
         state = self.get_state_feature(state)
         self.hidden = self.rnn.initHidden()
-
-        self.prev_hidden = self.hidden
-
         with torch.no_grad():
             current_q, self.hidden = self.rnn(state, self.hidden)
             current_q = F.softmax(current_q, -1)
@@ -129,7 +193,7 @@ class RNNAgent(agent.BaseAgent):
         else:
             action = self.argmax(current_q)
         # with torch.no_grad():
-        #     self.hidden *= (1 + F.tanh(self.rnn.actions[action]))
+        #     self.hidden *= 1 + self.rnn.actions[action]
 
         self.prev_action_value = current_q[action]
         self.prev_state = state
@@ -152,29 +216,26 @@ class RNNAgent(agent.BaseAgent):
         # Choose action using epsilon greedy.
         state = self.get_state_feature(state)
 
-        self.buffer.push(self.prev_state, self.prev_action, reward, self.prev_hidden.detach(), self.discount)
-
-        self.prev_hidden = self.hidden
+        self.buffer.push(self.prev_state, self.prev_action, reward, self.hidden.detach(), self.discount)
 
         with torch.no_grad():
             current_q, self.hidden = self.rnn(state, self.hidden)
             current_q = F.softmax(current_q, -1)
         current_q.squeeze_()
-        # self.epsilon = max(0.1, self.epsilon * 0.98)
 
         if self.rand_generator.rand() < self.epsilon:
             action = self.rand_generator.randint(self.num_actions)
         else:
             action = self.argmax(current_q)
         # with torch.no_grad():
-        #     self.hidden *= 1 + F.tanh(self.rnn.actions[action])
+        #     self.hidden *= 1 + self.rnn.actions[action]
 
         self.prev_action_value = current_q[action]
         self.prev_state = state
         self.prev_action = action
         self.steps += 1
 
-        if len(self.buffer) > self.T+1:
+        if len(self.buffer) > self.T+1:# and self.steps % 5 == 0:# and self.epsilon == .1:
             self.batch_train()
         return action
 
@@ -196,9 +257,8 @@ class RNNAgent(agent.BaseAgent):
         self.train_steps += 1
         self.rnn.train()
         transitions = self.buffer.sample_successive(self.T+1)
-        # batch = transitions[0]
         batch = Transition(*zip(*transitions))
-
+        next_discount_batch = torch.FloatTensor(batch.discount[1:]).to(device)
         state_batch = torch.cat(batch.state[:-1])
         next_state_batch = torch.cat(batch.state[1:])
 
@@ -207,22 +267,22 @@ class RNNAgent(agent.BaseAgent):
 
         reward_batch = torch.FloatTensor(batch.reward[:-1]).to(device)
         hidden_batch = batch.hidden[0]
-        next_hidden_batch = batch.hidden[1]
+        next_hidden_batch = batch.hidden[1] # or after rnn next_hidden_batch[0]
 
         discount_batch = torch.FloatTensor(batch.discount[:-1]).to(device)
-        next_discount_batch = torch.FloatTensor(batch.discount[1:]).to(device)
 
         current_q, _ = self.rnn.batch(state_batch, hidden_batch, discount_batch, action_batch)
-        current_q = current_q.squeeze()
         q_learning_action_values = current_q.gather(1, action_batch)
         with torch.no_grad():
             new_q, _ = self.target_rnn.batch(next_state_batch, next_hidden_batch, next_discount_batch, next_action_batch)
-        max_q = new_q.max(2)[0]
+        max_q = new_q.max(1)[0]
+        # max_q = new_q.gather(1, next_action_batch).squeeze_()
         target = reward_batch
-        target += discount_batch * max_q.squeeze_()
+        target += discount_batch * max_q
 
         target = target.view(-1, 1)
-        loss = criterion(q_learning_action_values, target)
+        # loss = criterion(q_learning_action_values, target)
+        loss = criterion(q_learning_action_values[-1], target[-1])
 
         self.optimizer.zero_grad()
         loss.backward()
