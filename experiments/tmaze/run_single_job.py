@@ -53,12 +53,13 @@ def run_episode(env, agent, state_visits=None, keep_history=False):
         if state_visits is not None:
             state_visits[state[0]] += 1
 
+    sucess = reward == 10
     if keep_history:
         history = env.history
         env.env_cleanup()
-        return sum_of_rewards, step_count, history
+        return int(sucess), step_count, history
     else:
-        return sum_of_rewards, step_count
+        return int(sucess), step_count
 
 
 agents = {
