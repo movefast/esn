@@ -22,7 +22,7 @@ tot_num_steps = 10000
 # -----> gamma
 gamma = 0.9
 
-cur_dir = pathlib.Path(os.path.split(os.path.realpath(__file__)))
+cur_dir = pathlib.Path(os.path.split(os.path.realpath(__file__))[0])
 
 
 def run_episode(env, agent, state_visits=None, keep_history=False):

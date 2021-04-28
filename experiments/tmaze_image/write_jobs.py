@@ -13,7 +13,7 @@ MAX_EVALS = 200
 count = 0
 
 
-cur_dir = pathlib.Path(os.path.split(os.path.realpath(__file__)))
+cur_dir = pathlib.Path(os.path.split(os.path.realpath(__file__))[0])
 
 def create_job(agent_type, hyper_params):
     global count
