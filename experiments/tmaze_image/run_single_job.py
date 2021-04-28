@@ -6,13 +6,10 @@ import fire
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from agents.columnar.columnar_agent_stable_v1_base import \
-    RNNAgent as ESNAgentV2
-from agents.gru_agent import RNNAgent as GRUAgent
-# from agents.rnn_agent import RNNAgent as RNNAgent
 from configs import ROOT_DIR
 from env.gridworld import MazeEnvironment
 from env.tmaze import MazeEnvironment as TMazeEnvironment
+from experiments import AGENT_DICT
 from fastprogress.fastprogress import master_bar, progress_bar
 from tqdm import tqdm
 
@@ -60,17 +57,11 @@ def run_episode(env, agent, state_visits=None, keep_history=False):
     else:
         return int(sucess), step_count
 
-
-agents = {
-    "GRU": GRUAgent,
-    "ESN_V2": ESNAgentV2,
-}
-
-
 agent_infos = {
     "GRU": {"step_size": 0.0025},
     "SubsampleAgent": {"step_size": 0.005},
     "ESN_V2": {"step_size": 0.00125, "beta":0.15},
+    "RNN": {"step_size": 0.0025},
 }
 
 envs = {
@@ -119,7 +110,7 @@ def objective(agent_type, hyper_params, num_runs=num_runs):
                 metrics[metric][env_name].setdefault(algorithm, [])
 
         for run in progress_bar(range(num_runs), parent=mb):
-            agent = agents[agent_type]()
+            agent = AGENT_DICT[agent_type]()
             env = Environment()
             env.env_init(env_info)
             # print(env_info)
