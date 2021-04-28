@@ -162,7 +162,7 @@ def objective(agent_type, hyper_params, num_runs=num_runs):
                 if cur_step > tot_num_steps:
                     cum_rewards.extend([cum_rewards[-1]]*(ep_num_steps - (cur_step - tot_num_steps)))
                 else:
-                    cum_rewards.extend([cum_rewards[-1]]*(ep_num_steps-1) + [ep_return])
+                    cum_rewards.extend([cum_rewards[-1]]*(ep_num_steps-1) + [cum_rewards[-1] + ep_return])
 
             metrics["cum_rewards_per_run"][env_name].setdefault(algorithm, []).append(cum_rewards)
             metrics["sampled_states_per_run"][env_name].setdefault(algorithm, []).append(sampled_states_per_ep)
