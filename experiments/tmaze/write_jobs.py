@@ -1,3 +1,4 @@
+import os
 import pathlib
 import random
 from itertools import product
@@ -12,7 +13,7 @@ MAX_EVALS = 200
 count = 0
 
 
-cur_dir = ROOT_DIR/"experiments/tmaze"
+cur_dir = pathlib.Path(os.path.split(os.path.realpath(__file__)))
 
 def create_job(agent_type, hyper_params):
     global count

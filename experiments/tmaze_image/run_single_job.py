@@ -1,3 +1,5 @@
+import os
+import pathlib
 import time
 
 import fire
@@ -20,8 +22,7 @@ tot_num_steps = 10000
 # -----> gamma
 gamma = 0.9
 
-cur_dir = ROOT_DIR/"experiments/tmaze"
-
+cur_dir = pathlib.Path(os.path.split(os.path.realpath(__file__)))
 
 def run_episode(env, agent, state_visits=None, keep_history=False):
     is_terminal = False
