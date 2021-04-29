@@ -61,8 +61,15 @@ def get_lr(b=1e-2, a=2, n=5):
 
 
 params_to_search = {
+    "RNN": {
+        "step_size": get_lr(n=6),
+    },
     "GRU": {
         "step_size": get_lr(n=6),
+    },
+    "Trace": {
+        "step_size": get_lr(n=6),
+        "alpha": get_lr(b=0.4, n=4),
     },
     "ESN_V2": {
         "step_size": get_lr(n=6),

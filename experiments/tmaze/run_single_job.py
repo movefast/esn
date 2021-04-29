@@ -9,7 +9,7 @@ import torch
 from configs import ROOT_DIR
 from env.gridworld import MazeEnvironment
 from env.tmaze import MazeEnvironment as TMazeEnvironment
-from experiments import AGENT_DICT
+from experiments import AGENT_DICT, AGENT_PARAMS
 from fastprogress.fastprogress import master_bar, progress_bar
 from tqdm import tqdm
 
@@ -58,12 +58,7 @@ def run_episode(env, agent, state_visits=None, keep_history=False):
     else:
         return int(sucess), step_count
 
-agent_infos = {
-    "RNN": {"step_size": 0.0025},
-    "GRU": {"step_size": 0.0025},
-    "SubsampleAgent": {"step_size": 0.005},
-    "ESN_V2": {"step_size": 0.00125, "beta":0.15},
-}
+
 
 envs = {
     # 'Grid-World': MazeEnvironment,
@@ -117,7 +112,7 @@ def objective(agent_type, hyper_params, num_runs=num_runs):
             # -----> gamma seed
             agent_info = {"num_actions": 4, "num_states": env.cols * env.rows, "epsilon": 1, "step_size": 0.1, "discount": gamma}
             agent_info["seed"] = run
-            agent_info.update(agent_infos[agent_type])
+            agent_info.update(AGENT_PARAMS[agent_type])
             agent_info.update(hyper_params)
             np.random.seed(run)
             agent.agent_init(agent_info)
