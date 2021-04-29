@@ -3,21 +3,26 @@ import pathlib
 import random
 from itertools import product
 
+import fire
 import numpy as np
 import pandas as pd
 from configs import ROOT_DIR
+from experiments import AGENT_DICT
 from fastprogress.fastprogress import master_bar, progress_bar
 
 MAX_EVALS = 200
 # -----> change to take count as input in order to write jobs incrementally
 count = 0
 
+EXP_DIR = "tmaze"
+JOBS_DIR = "jobs"
+
 
 cur_dir = pathlib.Path(os.path.split(os.path.realpath(__file__))[0])
 
 def create_job(agent_type, hyper_params):
     global count
-    cmd = f"python -m experiments.tmaze.run_single_job --agent_type=\"{agent_type}\" --hyper_params=\"{hyper_params}\""
+    cmd = f"python -m experiments.{EXP_DIR}.run_single_job --agent_type=\"{agent_type}\" --hyper_params=\"{hyper_params}\""
     with open(cur_dir/f"jobs/tasks_{count}.sh", 'w') as f:
         f.write(cmd)
     print(count, cmd)
@@ -77,10 +82,28 @@ params_to_search = {
     },
 }
 
+def write_jobs(append=True, agents=None):
+    (cur_dir/f"{JOBS_DIR}").mkdir(parents=True, exist_ok=True)
+    cur_tsk_fs = [f for f in os.listdir(f"experiments/{EXP_DIR}/{JOBS_DIR}") if f.startswith("tasks")]
 
-if __name__ == "__main__":
-    (cur_dir/"jobs").mkdir(parents=True, exist_ok=True)
-    for agent_type in master_bar(list(agents.keys())):
+    if append:
+        global count
+        count = len(cur_tsk_fs)
+    else:
+        for fname in cur_tsk_fs:
+            os.remove(cur_dir/f"{JOBS_DIR}"/fname)
+
+    bgn_count = count
+
+    if agents is None:
+        agents = list(params_to_search.keys())
+    elif not isinstance(agents, list):
+        agents = [agents]
+
+    for agent_type in master_bar(agents):
+        if agent_type not in list(AGENT_DICT.keys()):
+            print(f"{agent_type} is not found in experiments/__init__.py; skipping")
+            continue
         print(agent_type)
         if agent_type == 'XXX':
             random_search(agent_type, params_to_search[agent_type], max_evals=100)
@@ -88,6 +111,7 @@ if __name__ == "__main__":
             random_search(agent_type, params_to_search[agent_type])
         else:
             grid_search(agent_type, params_to_search[agent_type])
+    print(f'Jobs: sbatch --array={bgn_count}-{count-1} ./experiments/{EXP_DIR}/{JOBS_DIR}/run_cpu.sh')
 
-        print('Jobs: sbatch --array={}-{} ./experiments/tmaze/jobs/run_cpu.sh'.format(0, count-1))
-
+if __name__ == "__main__":
+    fire.Fire(write_jobs)
