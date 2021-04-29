@@ -90,7 +90,7 @@ class RNNAgent(agent.BaseAgent):
         self.target_rnn = SimpleRNN(self.num_states+1, self.num_states+1, self.num_actions).to(device)
         self.update_target()
         self.optimizer = torch.optim.Adam(self.rnn.parameters(), lr=self.step_size)
-        self.buffer = ReplayMemory(10000)
+        self.buffer = ReplayMemory(1000)
         self.tau = .5
         self.flag = False
         self.train_steps = 0
