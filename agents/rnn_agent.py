@@ -21,7 +21,7 @@ class SimpleRNN(nn.Module):
         #     self.i2h.weight /= s[0].item()
         self.i2o = nn.Linear(input_size + hidden_size, output_size)
         self.tanh = nn.Tanh()
-        self.actions = nn.Parameter(torch.normal(0, .01, (4, hidden_size)))
+        # self.actions = nn.Parameter(torch.normal(0, .01, (4, hidden_size)))
 
     def forward(self, inp, hidden):
         output = []
@@ -48,7 +48,7 @@ class SimpleRNN(nn.Module):
             hidden = self.i2h(combined)
             hidden = self.tanh(hidden)
             output.append(self.i2o(combined))
-            hidden = hidden * (1 + self.actions[action_batch[i]])
+            # hidden = hidden * (1 + self.actions[action_batch[i]])
 
             hiddens.append(hidden)
             # hiddens.append(hidden.detach())
@@ -84,6 +84,7 @@ class RNNAgent(agent.BaseAgent):
 
         self.discount = agent_init_info["discount"]
         self.rand_generator = np.random.RandomState(agent_init_info["seed"])
+        torch.manual_seed(agent_init_info["seed"])
         self.T = agent_init_info.get("T", 10)
 
         self.rnn = SimpleRNN(self.num_states+1, self.num_states+1, self.num_actions).to(device)
@@ -131,8 +132,8 @@ class RNNAgent(agent.BaseAgent):
             action = self.rand_generator.randint(self.num_actions)
         else:
             action = self.argmax(current_q)
-        with torch.no_grad():
-            self.hidden *= 1 + self.rnn.actions[action]
+        # with torch.no_grad():
+        #     self.hidden *= 1 + self.rnn.actions[action]
 
         self.prev_action_value = current_q[action]
         self.prev_state = state
@@ -166,8 +167,8 @@ class RNNAgent(agent.BaseAgent):
             action = self.rand_generator.randint(self.num_actions)
         else:
             action = self.argmax(current_q)
-        with torch.no_grad():
-            self.hidden *= 1 + self.rnn.actions[action]
+        # with torch.no_grad():
+        #     self.hidden *= 1 + self.rnn.actions[action]
 
         self.prev_action_value = current_q[action]
         self.prev_state = state
