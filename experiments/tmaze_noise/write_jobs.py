@@ -7,7 +7,8 @@ import fire
 import numpy as np
 import pandas as pd
 from configs import ROOT_DIR
-from experiments import AGENT_DICT
+# from experiments import AGENT_DICT
+from experiments.tmaze_noise.run_single_job import AGENT_DICT
 from fastprogress.fastprogress import master_bar, progress_bar
 
 MAX_EVALS = 200
