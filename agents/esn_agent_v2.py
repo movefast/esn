@@ -142,6 +142,7 @@ class RNNAgent(agent.BaseAgent):
 
         self.discount = agent_init_info["discount"]
         self.rand_generator = np.random.RandomState(agent_init_info["seed"])
+        torch.manual_seed(agent_init_info["seed"])
         self.T = agent_init_info.get("T",10)
         self.hidden_size = agent_init_info.get("hidden_size", self.num_states+1)
 
