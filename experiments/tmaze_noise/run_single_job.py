@@ -37,7 +37,7 @@ AGENT_PARAMS = {
 
 
 exp_decay_explor = True
-num_runs = 1
+num_runs = 25
 tot_num_steps = 10000
 # -----> gamma
 gamma = 0.9
