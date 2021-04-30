@@ -14,16 +14,16 @@ from fastprogress.fastprogress import master_bar, progress_bar
 MAX_EVALS = 200
 count = 0
 
-EXP_DIR = "tmaze_image"
+current_dir_path = os.path.split(os.path.realpath(__file__))[0]
+CUR_DIR = pathlib.Path(current_dir_path)
+EXP_DIR = current_dir_path.split('/')[-1]
 JOBS_DIR = "jobs"
 
-
-cur_dir = pathlib.Path(os.path.split(os.path.realpath(__file__))[0])
 
 def create_job(agent_type, hyper_params):
     global count
     cmd = f"python -m experiments.{EXP_DIR}.run_single_job --agent_type=\"{agent_type}\" --hyper_params=\"{hyper_params}\""
-    with open(cur_dir/f"jobs/tasks_{count}.sh", 'w') as f:
+    with open(CUR_DIR/f"jobs/tasks_{count}.sh", 'w') as f:
         f.write(cmd)
     print(count, cmd)
     count += 1
@@ -82,7 +82,7 @@ params_to_search = {
 }
 
 def write_jobs(append=True, agents=None):
-    (cur_dir/f"{JOBS_DIR}").mkdir(parents=True, exist_ok=True)
+    (CUR_DIR/f"{JOBS_DIR}").mkdir(parents=True, exist_ok=True)
     cur_tsk_fs = [f for f in os.listdir(f"experiments/{EXP_DIR}/{JOBS_DIR}") if f.startswith("tasks")]
 
     if append:
@@ -90,7 +90,7 @@ def write_jobs(append=True, agents=None):
         count = len(cur_tsk_fs)
     else:
         for fname in cur_tsk_fs:
-            os.remove(cur_dir/f"{JOBS_DIR}"/fname)
+            os.remove(CUR_DIR/f"{JOBS_DIR}"/fname)
 
     bgn_count = count
 
