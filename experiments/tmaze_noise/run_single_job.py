@@ -13,6 +13,8 @@ from experiments.tmaze_noise.agents.esn import RNNAgent as ESNAgentV2
 from experiments.tmaze_noise.agents.gru_agent import RNNAgent as GRUAgent
 from experiments.tmaze_noise.agents.memory_esn import \
     RNNAgent as MemoryESNAgent
+from experiments.tmaze_noise.agents.memory_esn_state import \
+    RNNAgent as StateMemoryESNAgent
 from experiments.tmaze_noise.agents.rnn_agent import RNNAgent as RNNAgent
 from experiments.tmaze_noise.agents.trace_agent import RNNAgent as TraceAgent
 from fastprogress.fastprogress import master_bar, progress_bar
@@ -24,6 +26,7 @@ AGENT_DICT = {
     "RNN": RNNAgent,
     "Trace": TraceAgent,
     "MemoryESN": MemoryESNAgent,
+    "StateMemoryESN": StateMemoryESNAgent,
 }
 
 AGENT_PARAMS = {
@@ -33,6 +36,7 @@ AGENT_PARAMS = {
     "ESN_V2": {"step_size": 0.00125, "beta":0.15},
     "Trace": {"step_size": 0.00125, 'alpha':0.1},
     "MemoryESN": {"step_size": 0.00125, "beta":0.15},
+    "StateMemoryESN": {"step_size": 0.00125, "beta":0.15},
 }
 
 

@@ -17,6 +17,7 @@ class SimpleRNN(nn.Module):
 
     def __init__(self, input_size, hidden_size, output_size, beta):
         super(SimpleRNN, self).__init__()
+        self.input_size = input_size
         self.hidden_size = hidden_size
         self.tanh = nn.ReLU()
         # self.i2h = nn.Linear(input_size, hidden_size, bias=False)
@@ -56,6 +57,10 @@ class SimpleRNN(nn.Module):
         self.o = nn.Linear((input_size+hidden_size)//2, output_size)
         # torch.nn.init.xavier_uniform_(self.i2o.weight)
         # self.actions = nn.Parameter(torch.normal(0, .01, (output_size, hidden_size)))
+
+    def reset_memory(self):
+        self.avg_feature = torch.zeros(1, self.input_size+self.hidden_size).to(device)
+        self.steps = 1
 
     def forward(self, inp, hidden):
         output = []
@@ -107,7 +112,10 @@ class SimpleRNN(nn.Module):
             # hidden_i = self.pool_w(hidden).flatten(start_dim=1)
             # x = self.i2h(x)
             combined = torch.cat((x, hidden_i), 1)
-            pred = self.o(self.tanh(self.i2o(combined)))
+            self.avg_feature = (self.avg_feature + combined) / self.steps
+            pred = self.o(self.tanh(self.i2o(self.avg_feature)))
+            self.avg_feature *= self.steps
+            self.steps += 1
 
             with torch.no_grad():
                 hidden_w = self.w * hidden
@@ -124,6 +132,8 @@ class SimpleRNN(nn.Module):
     def batch(self, inp, hidden, discount_batch, action_batch):
         output = []
         hiddens = []
+        avg_feature = torch.zeros(1, self.input_size+self.hidden_size).to(device)
+        steps = 1
         if len(inp.size()) == 2:
             inp = inp.unsqueeze(1)
         for i in range(inp.size(0)):
@@ -169,7 +179,10 @@ class SimpleRNN(nn.Module):
             # hidden_i = self.pool_w(hidden).flatten(start_dim=1)
             # x = self.i2h(x)
             combined = torch.cat((x, hidden_i), 1)
+            combined = (avg_feature + combined) / steps
             pred = self.o(self.tanh(self.i2o(combined)))
+            avg_feature = combined.detach() * steps
+            steps += 1
 
             with torch.no_grad():
                 hidden_w = self.w * hidden
@@ -235,7 +248,7 @@ class RNNAgent(agent.BaseAgent):
         Returns:
             action (int): the first action the agent takes.
         """
-
+        self.rnn.reset_memory()
         # Choose action using epsilon greedy.
         self.is_door = None
         self.feature = None

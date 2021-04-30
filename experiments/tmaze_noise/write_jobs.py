@@ -79,6 +79,10 @@ params_to_search = {
         "step_size": get_lr(n=6),
         "beta": [0.01, 0.05, 0.1, 0.15, 0.2, 0.25],
     },
+    "StateMemoryESN": {
+        "step_size": get_lr(n=6),
+        "beta": [0.01, 0.05, 0.1, 0.15, 0.2, 0.25],
+    },
 }
 
 def write_jobs(append=True, agents=None):

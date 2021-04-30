@@ -235,16 +235,15 @@ class RNNAgent(agent.BaseAgent):
         Returns:
             action (int): the first action the agent takes.
         """
-
+        self.steps = 0
         # Choose action using epsilon greedy.
-        self.is_door = None
-        self.feature = None
+        self.feature = state
         self.hidden = self.rnn.initHidden()
 
         self.prev_hidden = self.hidden
 
         with torch.no_grad():
-            current_q, self.hidden = self.rnn(state, self.hidden)
+            current_q, self.hidden = self.rnn(self.feature, self.hidden)
             current_q = F.softmax(current_q, -1)
         current_q.squeeze_()
         if self.rand_generator.rand() < self.epsilon:
@@ -255,9 +254,8 @@ class RNNAgent(agent.BaseAgent):
         #     self.hidden *= 1 + self.rnn.actions[action]
 
         self.prev_action_value = current_q[action]
-        self.prev_state = state
+        self.prev_state = self.feature
         self.prev_action = action
-        self.steps = 0
 
         return action
 
@@ -271,14 +269,15 @@ class RNNAgent(agent.BaseAgent):
         Returns:
             action (int): the action the agent is taking.
         """
-
+        self.steps += 1
+        self.feature = self.feature / (self.steps + 1) * self.steps
         # Choose action using epsilon greedy.
         self.buffer.push(self.prev_state, self.prev_action, reward, self.prev_hidden.detach(), self.discount)
 
         self.prev_hidden = self.hidden
 
         with torch.no_grad():
-            current_q, self.hidden = self.rnn(state, self.hidden)
+            current_q, self.hidden = self.rnn(self.feature, self.hidden)
             current_q = F.softmax(current_q, -1)
         current_q.squeeze_()
 
@@ -290,9 +289,8 @@ class RNNAgent(agent.BaseAgent):
         #     self.hidden *= 1 + self.rnn.actions[action]
 
         self.prev_action_value = current_q[action]
-        self.prev_state = state
+        self.prev_state = self.feature
         self.prev_action = action
-        self.steps += 1
 
         if len(self.buffer) > self.T+1:# and self.steps % 5 == 0:# and self.epsilon == .1:
             self.batch_train()
