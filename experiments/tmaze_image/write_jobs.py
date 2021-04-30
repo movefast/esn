@@ -11,7 +11,6 @@ from experiments import AGENT_DICT
 from fastprogress.fastprogress import master_bar, progress_bar
 
 MAX_EVALS = 200
-# -----> change to take count as input in order to write jobs incrementally
 count = 0
 
 EXP_DIR = "tmaze_image"
